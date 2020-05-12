@@ -25,7 +25,8 @@ Rx = 0x4ca91fe907c82a68a7cf562a2b55d436L
 Ry = 0xf86a643915962ae0bbbb77b9f4a9be80L
 R = E(Rx,Ry)
 
-data = open("chal", "rb").read().encode('hex')
+
+data = "5ffc66717a1604750760e1708aac7007217d9252342d1c27428fb2bdb659ae50ba8fcface31dd2be97c5e5e4523f8d"
        
 # parse the data from the encrypted blob
 enc_flag = data[32:].decode('hex')
@@ -49,8 +50,8 @@ def solve_local(factor):
 	return dl
 
 # find k such that P = k*Q on the elliptic curve
-def recover_secret_exponent(recover_dl_again = False):
-	if not recover_dl_again:
+def recover_secret_exponent(flag):
+	if flag:
 		# as precomputed 
 		return 265932790776829999322959240429346273803
 	else:
@@ -84,8 +85,8 @@ def get_y_coordinate(x):
 	else:
 		return 0
 
-# loop over the unknown contributions of r*R; we will need to guess two values
-# of r in sequential steps of the prng - each value of r is needed only modulo the order or R of course
+# loop over the unknown contributions of r*R; we will need to guess three values
+# of r in sequential steps of the prng - each value of r is needed only module the order or R of course
 def find_flag(s0P):
 	for r0 in range(SMALL_ORDER):	
 		t1 = r0*R 
@@ -93,8 +94,8 @@ def find_flag(s0P):
 		s1 = int(s1)
 		rnd = (s1*Q).xy()[0]
 		key0 = num_to_raw_hex(rnd)
-
 		for r1 in range(SMALL_ORDER):
+						
 			t1 = r1*R 
 			t2 = s1*P
 			s2 = (t1 + t2).xy()[0] # update state
@@ -127,27 +128,33 @@ def parse_time(gap):
 # decrypt the flag
 def solve():
 	# set flag to True to skip over the re-computatuon of the discrete log
-	secret_exp = recover_secret_exponent()
+	secret_exp = recover_secret_exponent(False)
 	print "[*] backdoor exponent recovered:", secret_exp
 	t = time.time()
 	print "[*] time elapsed so far:", parse_time(t-t0)
 
 	# with help of the backdoor discrete log, compute the two possible intermediate states of the prng	
-	# note we only need one
 	y = get_y_coordinate(x)
 	
 	if 0 == y:
 		print "Error"
 		return
 	
-	start = secret_exp*E(x,y)
+	Start1 = secret_exp*E(x,y)
+	Start2 = secret_exp*E(x,p-y)
 	
-	if start is not None:
-		print "[*] state after iv generation recovered"
-		t = time.time()
-		print "[*] time elapsed so far:", parse_time(t-t0)
-		if not find_flag(start):
-			print "[*] flag not found"
+	print "[*] state after iv generation recovered"
+	t = time.time()
+	print "[*] time elapsed so far:", parse_time(t-t0)
+
+	if Start1 is not None:
+		if find_flag(Start1):
+			return
+	if Start2 is not None:
+		if find_flag(Start2):
+			return
+		
+	print "[*] flag not found"
 	
 solve()
 	

@@ -1,15 +1,20 @@
 #! /usr/bin/env python
 
-from ec_utils import uber_prng
+from BSecure import *
 from Crypto.Cipher import AES
 
-rng = uber_prng()
+f = open("flag", "r")
+flag = f.read()
+f.close()
 
-flag = "basinga_there_goes_the_backdoor"
+rng = BSecure_rng()
 
 iv  = rng.get_random(16)
 key = rng.get_random(32)
 
 aes = AES.new(key, AES.MODE_CFB, iv)
 
-print iv.encode('hex') + aes.encrypt(flag).encode('hex')
+f = open("chal", "wb")
+f.write(iv + aes.encrypt(flag))
+f.close()
+
